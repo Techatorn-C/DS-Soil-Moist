@@ -1,0 +1,112 @@
+#define BLYNK_PRINT Serial
+#define BLYNK_TEMPLATE_ID "TMPLhaA7XDOk"
+
+
+#include <WiFi.h>
+#include <WiFiClient.h>
+#include <BlynkSimpleEsp32.h>
+#include <HardwareSerial.h>
+#include <Arduino.h>
+
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+
+
+#define ONE_WIRE_BUS_1 4                  // กำหนด one wire bus ต่อ Data เข้า pin 4 ของ Arduino
+#define Pump 12                            // กำหนด Pump ขา pin 12 ของ Arduino
+
+
+int analogPin = 2; //ประกาศตัวแปร ให้ analogPin แทนขา analog ขาที่13
+int Soil_Moisture = 0;
+
+char auth[] = "ln0IW3iIKtj-RVW2C3806yfdLx7Qf-Dc";
+char ssid[] = "Smart Mush";       // ssid
+char pass[] = "111222333";         // Password
+
+
+OneWire oneWire1(ONE_WIRE_BUS_1);         // Setup OneWire เพื่อสื่อสารกับ Arduino
+DallasTemperature DSTEMP1(&oneWire1);     // ตั้งชื่อเซ็นเซอร์เป็น DSTEMP และอ้างอิง OneWire ไปยังไลบรารี DallasTemperature
+
+
+
+void setup(void) {
+  Serial.begin(9600);
+  pinMode(analogPin, INPUT);
+
+  //    Blynk.begin(auth, ssid, pass); //Connecting to oasiskit.com,8080
+  //    while (!Blynk.connected())
+  {
+    delay(1000);
+    Serial.println("Wifi connecting");
+
+    DSTEMP1.begin();                        // DSTEMP เริ่มทำงาน
+    pinMode(Pump, OUTPUT);                   // กำหนด Pump เป็น Output
+
+    digitalWrite(Pump, LOW);                 // กำหนดสถานะเริ่มต้นของ Pump เป็น Low
+
+  }
+
+}
+
+void loop(void)  {
+
+
+  Blynk.run();
+
+  DSTEMP1.requestTemperatures();          // ส่งคำสั่งขอข้อมูลอุณหภูมิ
+
+
+  Blynk_Print();
+  Soil_moisture_Print();
+  Temp_Print();
+
+
+  Serial.println();
+
+  delay(2000);
+}
+
+void Soil_moisture_Print()
+{
+
+  Soil_Moisture = analogRead(analogPin);  //อ่านค่าสัญญาณ  Soil Moisture Sensor Module v1
+  Serial.println(Soil_Moisture);
+  delay(1000);
+
+  Soil_Moisture = map(Soil_Moisture, 1500, 4095, 100, 0);
+
+  //Soil_Moisture = map(Soil_Moisture, 0, 4095, 100, 0);
+  Serial.print("SensorValue_"); // พิมพ์ข้อมความส่งเข้าคอมพิวเตอร์ "Soil_Moisture = "
+
+
+  if (Soil_Moisture > 100)      //ถ้า Temp1 มากกว่า 30
+  {
+    Serial.print("100");
+  }
+  else
+  {
+    Serial.print(Soil_Moisture);
+  }
+
+  Serial.println(" %");
+}
+
+void Temp_Print()
+{
+  Serial.print("TempIn_");
+  Serial.print(DSTEMP1.getTempCByIndex(0));
+  delay(100);
+  Serial.print(" TempOut_");
+  Serial.println(DSTEMP1.getTempCByIndex(1));
+
+  delay(100);
+}
+
+void Blynk_Print()
+{
+  Blynk.virtualWrite(V0, DSTEMP1.getTempCByIndex(0));                    //Temp in
+  Blynk.virtualWrite(V1, DSTEMP1.getTempCByIndex(1));                    //Temp out
+  Blynk.virtualWrite(V2, Soil_Moisture);
+
+}
